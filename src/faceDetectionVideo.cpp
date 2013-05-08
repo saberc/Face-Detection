@@ -27,14 +27,18 @@ void detectAndDisplay(Mat frame);
 
 // Global variables
 string faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
-string profileCascadeName = "./haarcascades/haarcascade_profileface.xml";
-string eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
+//string eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
+string eyesCascadeName = "./haarcascades/haarcascade_eye.xml";
 string windowName = "Face Detection";
-string windowGrayName = "Gray Face Detection";
+string windowTest = "Detection Test";
 string equalized_window = "Equalized Image";
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
-//const string filename = "/Users/sabriecca/Documents/Video/REC1/prova1.xml";
 const string filename = "/Users/sabriecca/Documents/Video/REC1/prova.xml";
+
+CvCapture* capture = 0;
+Mat grayFrame;
+Mat frameCopy;
+Mat frame;
 bool paused = false;
 double millsecFrame = 0;
 int totalFrames = 0;
@@ -44,12 +48,8 @@ int x, y, h, w;
 int width;
 int height;
 
-CvCapture* capture = 0;
-Mat frame;
-
 CascadeClassifier faceCascade;
 CascadeClassifier eyesCascade;
-
 RNG rng(12345);
 
 /*Function main */
@@ -66,7 +66,6 @@ int main() {
 
 //Read the video stream
 //capture = cvCaptureFromCAM(-1);
-
 	capture = cvCaptureFromFile(video);
 	if (capture) {
 		for (;;) {
@@ -78,9 +77,9 @@ int main() {
 				if (!frame.empty()) {
 					detectAndDisplay(frame);
                     //Get frame properties
-					int width = cvGetCaptureProperty(capture,
+					int widthFrame = cvGetCaptureProperty(capture,
 							CV_CAP_PROP_FRAME_WIDTH);
-					int height = cvGetCaptureProperty(capture,
+					int heightFrame = cvGetCaptureProperty(capture,
 							CV_CAP_PROP_FRAME_HEIGHT);
 					totalFrames = (int) cvGetCaptureProperty(capture,
 							CV_CAP_PROP_FRAME_COUNT);
@@ -88,18 +87,15 @@ int main() {
 							CV_CAP_PROP_POS_FRAMES));
 					millsecFrame = cvGetCaptureProperty(capture,
 							CV_CAP_PROP_POS_MSEC);
-
 					printf(
-							"width: %d" "totalFrames: %d posFrame: %d millsecFrame: %g ms\n",
-							width, totalFrames, posFrame, millsecFrame);
-
+							"widthFrame: %d heightFrame: %d totalFrames: %d posFrame: %d millsecFrame: %g ms\n",
+							widthFrame, heightFrame, totalFrames, posFrame, millsecFrame);
 				} else {
 					printf(" No captured frame!");
 					break;
 				}
 			}
-
-			//Get pause the video stream
+			//Get pause or stop the video stream
 			char c = (char) waitKey(10);
 			if (c == 'c') {
 				break;
@@ -114,12 +110,13 @@ int main() {
 		return 0;
 	}
 }
+
 /**
  * Function DetectAndDisplay
  */
+
 void detectAndDisplay(Mat frame) {
 	vector<Rect> faces;
-	Mat grayFrame;
 	static CvScalar colors[] =
 			{ { { 0, 0, 255 } }, { { 0, 128, 255 } }, { { 0, 255, 255 } }, { {
 					0, 255, 0 } }, { { 255, 128, 0 } }, { { 255, 255, 0 } }, { {
@@ -142,15 +139,16 @@ void detectAndDisplay(Mat frame) {
 	 ellipse(frame, center, Size(faces[i].width / 2, faces[i].height / 2), 0, 0, 360, colors[i%8], 2, 8, 0);
 	 */
 
-	//Draw the the Bounding Box for each face detected
+	//Draw the the Bounding Box for each detected face
 	for (size_t i = 0; i < faces.size(); i++) {
 		Mat faceROI = grayFrame(faces[i]);
+		vector<Rect> eyes;
+		Scalar eyeColor = CV_RGB(255,255,255);
 		x = faces[i].x;
 		y = faces[i].y;
 		w = x + faces[i].width;
 		h = y + faces[i].height;
 		rectangle(frame, Point(x, y), Point(w, h), colors[i % 8], 2, 8, 0);
-
 		width = faces[i].width;
 		height = faces[i].height;
 		printf("x= %d " "y= %d " "w= %d " "h= %d\n ", x, y, width, height);
@@ -160,40 +158,51 @@ void detectAndDisplay(Mat frame) {
 		//Put the coordinates in the image at the position of Point(x,y)
 		putText(frame, boxText, Point(x, y), FONT_HERSHEY_PLAIN, 1.0,
 				CV_RGB(0,255,0), 2.0);
-
-		//Mat faceROI = grayFrame(faces[i]);
-		std::vector<Rect> eyes;
 		//In each face, detect eyes
-		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 3,
-				0 | CV_HAAR_SCALE_IMAGE, Size(10, 60));
-		// eyesCascade.detectMultiScale(faceROI,eyes, 1.2, 1, 1 | CV_HAAR_SCALE_IMAGE, Size(40, 40));
+		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1, 1 | CV_HAAR_SCALE_IMAGE, Size(20, 20));
 		for (size_t j = 0; j < eyes.size(); j++) {
-			Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2,
-					faces[i].y + eyes[j].y + eyes[j].height / 2);
-			int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
-			circle(frame, eye_center, radius, Scalar(255, 255, 255), 1, 8, 0);
+
+		Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2, faces[i].y + eyes[j].y + eyes[j].height / 2);
+		int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
+		circle(frame, eye_center, radius, eyeColor, 1, 8, 0);
+
 		}
 	}
+		//Show what you got
+		imshow(windowName, frame);
 
-	//Show what you got
-	imshow(windowName, frame);
+		//Save frame data in xml file
+		FileStorage fs(filename, FileStorage::APPEND);
+		if (!fs.isOpened()) {
+			cout << "Unable to open file storage!" << endl;
+		}
+		/*
+		 *First format of xml file
+		fs << "Frame";
+		fs << "{" << "id" << posFrame;
+		fs << "millsecFrame" << millsecFrame;
+		fs << "detectionTime" << detectTime;
+		fs << "BBox" << "[";
+		fs << "x=" << x << "y=" << y << "w=" << width << "h=" << height;
+		fs << "]";
+		"}";
+        */
 
-	//Save frame data in xml file
-	FileStorage fs(filename, FileStorage::APPEND);
-	if (!fs.isOpened()) {
-		cout << "Unable to open file storage!" << endl;
-	}
+		//Second format of xml file
+		fs << "Frame";
+		fs << "{" << "id" << posFrame;
+		fs << "millsecFrame" << millsecFrame;
+		fs << "detectionTime" << detectTime;
+		fs << "BBox";
+			fs << "{" << "x" << x;
+				fs << "y" << y;
+				fs << "w" << width;
+				fs << "h" << height << "}"<<"}";
 
-	fs << "Frame";
-	fs << "{" << "id" << posFrame;
-	fs << "millsecFrame" << millsecFrame;
-	fs << "detectionTime" << detectTime;
-	fs << "BBox" << "[";
-	fs << "x=" << x << "y=" << y << "w=" << width << "h=" << height;
-	fs << "]";
-	"}";
 
-	fs.release();
+
+
+		fs.release();
 
 }
 
