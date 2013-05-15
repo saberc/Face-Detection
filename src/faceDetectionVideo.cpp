@@ -33,11 +33,11 @@ string windowName = "Face Detection";
 string windowTest = "Detection Test";
 string equalized_window = "Equalized Image";
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
-const string filename = "/Users/sabriecca/Documents/Video/REC1/prova.xml";
-
+//const string filename = "/Users/sabriecca/Documents/Video/REC1/prova.xml";
+//const string filename = "/Users/sabriecca/Documents/Video/REC1/prova1.xml";
+const string filename = "/Users/sabriecca/Documents/Video/REC1/prova2.xml";
 CvCapture* capture = 0;
 Mat grayFrame;
-Mat frameCopy;
 Mat frame;
 bool paused = false;
 double millsecFrame = 0;
@@ -103,7 +103,7 @@ int main() {
 				if (c == 'p') {
 					paused = !paused;
 				} else if (c == 'q') {
-					paused = !paused;
+					paused =!paused;
 				}
 			}
 		}
@@ -114,7 +114,6 @@ int main() {
 /**
  * Function DetectAndDisplay
  */
-
 void detectAndDisplay(Mat frame) {
 	vector<Rect> faces;
 	static CvScalar colors[] =
@@ -160,13 +159,13 @@ void detectAndDisplay(Mat frame) {
 				CV_RGB(0,255,0), 2.0);
 		//In each face, detect eyes
 		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1, 1 | CV_HAAR_SCALE_IMAGE, Size(20, 20));
-		for (size_t j = 0; j < eyes.size(); j++) {
 
+		for (size_t j = 0; j < eyes.size(); j++) {
 		Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2, faces[i].y + eyes[j].y + eyes[j].height / 2);
 		int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
 		circle(frame, eye_center, radius, eyeColor, 1, 8, 0);
-
 		}
+
 	}
 		//Show what you got
 		imshow(windowName, frame);
@@ -176,6 +175,7 @@ void detectAndDisplay(Mat frame) {
 		if (!fs.isOpened()) {
 			cout << "Unable to open file storage!" << endl;
 		}
+
 		/*
 		 *First format of xml file
 		fs << "Frame";
@@ -189,20 +189,23 @@ void detectAndDisplay(Mat frame) {
         */
 
 		//Second format of xml file
-		fs << "Frame";
-		fs << "{" << "id" << posFrame;
-		fs << "millsecFrame" << millsecFrame;
-		fs << "detectionTime" << detectTime;
-		fs << "BBox";
-			fs << "{" << "x" << x;
-				fs << "y" << y;
+		    fs << "Frame"<< "{";
+		    fs << "id" << posFrame;
+		    fs << "millsecFrame" << millsecFrame;
+		    fs << "detectionTime" << detectTime;
+		    for(size_t k = 0; k < faces.size(); k++)
+		    {   fs << "BBox" << "{";
+		    	fs << "x" << x;
+		    	fs << "y" << y;
 				fs << "w" << width;
-				fs << "h" << height << "}"<<"}";
+				fs << "h" << height;
+				fs << "}";
+		    	//fs << "x=" << x << "y=" << y << "w=" << width << "h=" << height;
+				//fs << "]";
+		    }
+		    fs << "}";
 
-
-
-
-		fs.release();
+		    fs.release();
 
 }
 
