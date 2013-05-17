@@ -36,6 +36,7 @@ const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
 //const string filename = "/Users/sabriecca/Documents/Video/REC1/prova.xml";
 //const string filename = "/Users/sabriecca/Documents/Video/REC1/prova1.xml";
 const string filename = "/Users/sabriecca/Documents/Video/REC1/prova2.xml";
+
 CvCapture* capture = 0;
 Mat grayFrame;
 Mat frame;
@@ -200,8 +201,6 @@ void detectAndDisplay(Mat frame) {
 				fs << "w" << width;
 				fs << "h" << height;
 				fs << "}";
-		    	//fs << "x=" << x << "y=" << y << "w=" << width << "h=" << height;
-				//fs << "]";
 		    }
 		    fs << "}";
 
