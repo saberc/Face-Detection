@@ -191,16 +191,19 @@ void detectAndDisplay(Mat frame) {
 
 		//Second format of xml file
 		    fs << "Frame"<< "{";
-		    fs << "id" << posFrame;
+		    fs << "idFrame" << posFrame;
 		    fs << "millsecFrame" << millsecFrame;
 		    fs << "detectionTime" << detectTime;
-		    for(size_t k = 0; k < faces.size(); k++)
-		    {   fs << "BBox" << "{";
-		    	fs << "x" << x;
+		    for(size_t k = 0; k < faces.size(); k++){
+		    int count = (k + 1);
+		   {   fs << "BBox" << "{";
+		   	    fs << "idBBox" << count;
+		        fs << "x" << x;
 		    	fs << "y" << y;
 				fs << "w" << width;
 				fs << "h" << height;
 				fs << "}";
+		    	 }
 		    }
 		    fs << "}";
 
