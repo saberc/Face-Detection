@@ -1,10 +1,9 @@
 //============================================================================
-// Name        : FaceDectionVideo.cpp
-
+// Name        : FaceDetectionVideo.cpp
 // Author      : Sabrina Ecca
 // Version     :
 // Copyright   : Your copyright notice
-// Description : C++, Ansi-style
+// Description : C++, OpenCV 2.4.2
 //============================================================================
 
 #include "opencv2/core/core.hpp"
@@ -19,42 +18,41 @@
 #include <sstream>
 #include <time.h>
 #include <string>
+
 using namespace std;
 using namespace cv;
 
 //Function Headers
-void detectAndDisplay(Mat frame);
+void detectAndDisplay(Mat frame, FileStorage& fs);
 
 // Global variables
 string faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
-//string eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
-string eyesCascadeName = "./haarcascades/haarcascade_eye.xml";
+string eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
 string windowName = "Face Detection";
-string windowTest = "Detection Test";
 string equalized_window = "Equalized Image";
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
-//const string filename = "/Users/sabriecca/Documents/Video/REC1/prova.xml";
-//const string filename = "/Users/sabriecca/Documents/Video/REC1/prova1.xml";
-const string filename = "/Users/sabriecca/Documents/Video/REC1/prova2.xml";
+const string filename = "./data/data.xml";
 
 CvCapture* capture = 0;
 Mat grayFrame;
 Mat frame;
 bool paused = false;
 double millsecFrame = 0;
-int totalFrames = 0;
+int framesNr = 0;
 int posFrame = 0;
+int widthFrame;
+int heightFrame;
 double detectTime = 0;
 int x, y, h, w;
 int width;
 int height;
-
 CascadeClassifier faceCascade;
 CascadeClassifier eyesCascade;
 RNG rng(12345);
 
 /*Function main */
 int main() {
+
 	//Load the cascades
 	if (!faceCascade.load(faceCascadeName)) {
 		printf("Error loading\n");
@@ -67,30 +65,42 @@ int main() {
 
 //Read the video stream
 //capture = cvCaptureFromCAM(-1);
+
 	capture = cvCaptureFromFile(video);
 	if (capture) {
+		framesNr = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+		FileStorage fs(filename, FileStorage::WRITE);
+		if (!fs.isOpened()) {
+			cout << "Unable to open file storage!" << endl;
+		}
+		fs << "framesNr" << framesNr;
+		fs << "Frames" << "[";
+
 		for (;;) {
 			if (!paused) {
 				frame = cvQueryFrame(capture);
-				//Resize video dimension
-				//resize(frame,frame,Size(),0.5,0.5);
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
-					detectAndDisplay(frame);
-                    //Get frame properties
-					int widthFrame = cvGetCaptureProperty(capture,
+
+					//Save frame data in xml file
+					fs << "{" << "Frame" << "{";
+					detectAndDisplay(frame, fs);
+					fs << "}" << "}";
+
+					//Get frame properties
+					widthFrame = cvGetCaptureProperty(capture,
 							CV_CAP_PROP_FRAME_WIDTH);
-					int heightFrame = cvGetCaptureProperty(capture,
+					heightFrame = cvGetCaptureProperty(capture,
 							CV_CAP_PROP_FRAME_HEIGHT);
-					totalFrames = (int) cvGetCaptureProperty(capture,
-							CV_CAP_PROP_FRAME_COUNT);
+
 					posFrame = ((int) cvGetCaptureProperty(capture,
 							CV_CAP_PROP_POS_FRAMES));
 					millsecFrame = cvGetCaptureProperty(capture,
 							CV_CAP_PROP_POS_MSEC);
 					printf(
-							"widthFrame: %d heightFrame: %d totalFrames: %d posFrame: %d millsecFrame: %g ms\n",
-							widthFrame, heightFrame, totalFrames, posFrame, millsecFrame);
+							"widthFrame: %d heightFrame: %d framesNr: %d posFrame: %d millsecFrame: %g ms\n",
+							widthFrame, heightFrame, framesNr, posFrame,
+							millsecFrame);
 				} else {
 					printf(" No captured frame!");
 					break;
@@ -104,18 +114,22 @@ int main() {
 				if (c == 'p') {
 					paused = !paused;
 				} else if (c == 'q') {
-					paused =!paused;
+					paused = !paused;
 				}
 			}
 		}
+		fs << "]";
+		fs.release();
+
 		return 0;
 	}
 }
 
-/**
+/*
  * Function DetectAndDisplay
  */
-void detectAndDisplay(Mat frame) {
+
+void detectAndDisplay(Mat frame, FileStorage& fs) {
 	vector<Rect> faces;
 	static CvScalar colors[] =
 			{ { { 0, 0, 255 } }, { { 0, 128, 255 } }, { { 0, 255, 255 } }, { {
@@ -134,23 +148,26 @@ void detectAndDisplay(Mat frame) {
 	detectTime = (t / ((double) cvGetTickFrequency() * 1000.));
 	printf("detection time = %g ms\n", detectTime);
 
-	/*	for (size_t i = 0; i < faces.size() ; i++) {
-	 Point center(faces[i].x + faces[i].width / 2, faces[i].y + faces[i].height / 2);
-	 ellipse(frame, center, Size(faces[i].width / 2, faces[i].height / 2), 0, 0, 360, colors[i%8], 2, 8, 0);
-	 */
-
-	//Draw the the Bounding Box for each detected face
+	fs << "frameId" << posFrame;
+	fs << "millsecFrame" << millsecFrame;
+	fs << "detectionTime" << detectTime;
+	fs << "BBoxes" << "[";
+	int bbId = 0;
+	//Draw the Bounding Box for each detected face
 	for (size_t i = 0; i < faces.size(); i++) {
 		Mat faceROI = grayFrame(faces[i]);
 		vector<Rect> eyes;
 		Scalar eyeColor = CV_RGB(255,255,255);
+
 		x = faces[i].x;
 		y = faces[i].y;
 		w = x + faces[i].width;
 		h = y + faces[i].height;
+
 		rectangle(frame, Point(x, y), Point(w, h), colors[i % 8], 2, 8, 0);
 		width = faces[i].width;
 		height = faces[i].height;
+
 		printf("x= %d " "y= %d " "w= %d " "h= %d\n ", x, y, width, height);
 		//Create the text we will annotate the bounding box coordinates
 		string boxText = format("x= %d " "y= %d " "w= %d " "h= %d ", x, y,
@@ -158,56 +175,30 @@ void detectAndDisplay(Mat frame) {
 		//Put the coordinates in the image at the position of Point(x,y)
 		putText(frame, boxText, Point(x, y), FONT_HERSHEY_PLAIN, 1.0,
 				CV_RGB(0,255,0), 2.0);
-		//In each face, detect eyes
-		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1, 1 | CV_HAAR_SCALE_IMAGE, Size(20, 20));
 
+		//For each face, detect eyes
+		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1,
+				1 | CV_HAAR_SCALE_IMAGE, Size(20, 20));
 		for (size_t j = 0; j < eyes.size(); j++) {
-		Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2, faces[i].y + eyes[j].y + eyes[j].height / 2);
-		int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
-		circle(frame, eye_center, radius, eyeColor, 1, 8, 0);
+			Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2,
+					faces[i].y + eyes[j].y + eyes[j].height / 2);
+			int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
+			circle(frame, eye_center, radius, eyeColor, 1, 8, 0);
 		}
+		bbId = (bbId + 1);
+		//Save data in xml file
+		fs << "{" << "BBox" << "{";
+		fs << "bboxId" << bbId;
+		fs << "x" << x;
+		fs << "y" << y;
+		fs << "w" << width;
+		fs << "h" << height;
+		fs << "}" << "}";
 
-	}
 		//Show what you got
 		imshow(windowName, frame);
-
-		//Save frame data in xml file
-		FileStorage fs(filename, FileStorage::APPEND);
-		if (!fs.isOpened()) {
-			cout << "Unable to open file storage!" << endl;
-		}
-
-		/*
-		 *First format of xml file
-		fs << "Frame";
-		fs << "{" << "id" << posFrame;
-		fs << "millsecFrame" << millsecFrame;
-		fs << "detectionTime" << detectTime;
-		fs << "BBox" << "[";
-		fs << "x=" << x << "y=" << y << "w=" << width << "h=" << height;
-		fs << "]";
-		"}";
-        */
-
-		//Second format of xml file
-		    fs << "Frame"<< "{";
-		    fs << "idFrame" << posFrame;
-		    fs << "millsecFrame" << millsecFrame;
-		    fs << "detectionTime" << detectTime;
-		    for(size_t k = 0; k < faces.size(); k++){
-		    int count = (k + 1);
-		   {   fs << "BBox" << "{";
-		   	    fs << "idBBox" << count;
-		        fs << "x" << x;
-		    	fs << "y" << y;
-				fs << "w" << width;
-				fs << "h" << height;
-				fs << "}";
-		    	 }
-		    }
-		    fs << "}";
-
-		    fs.release();
-
+	}
+	fs << "]";
 }
+
 
