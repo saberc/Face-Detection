@@ -23,25 +23,28 @@ using namespace std;
 using namespace cv;
 
 // Global variables
-string faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
-string eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
-string windowName = "Face Detection";
+
+//Cascade Classifier file, used for face detection
+const char* faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
+const char* eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
+
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
-const string filename = "./data/data.xml";
+const char* filename = "./data/data.xml";
+const char* windowName  = "Face Detection"; //Name shown in the GUI window
 
 CvCapture* capture = 0;
 Mat grayFrame;
 Mat frame;
 bool paused = false;
 double millsecFrame = 0;
+double detectTime = 0;
 int framesNr = 0;
 int posFrame = 0;
 int widthFrame;
 int heightFrame;
-double detectTime = 0;
 int x, y, h, w;
-int width;
-int height;
+int width, height;
+
 CascadeClassifier faceCascade;
 CascadeClassifier eyesCascade;
 RNG rng(12345);
