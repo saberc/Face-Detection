@@ -22,14 +22,10 @@
 using namespace std;
 using namespace cv;
 
-//Function Headers
-void detectAndDisplay(Mat frame, FileStorage& fs);
-
 // Global variables
 string faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
 string eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
 string windowName = "Face Detection";
-string equalized_window = "Equalized Image";
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
 const string filename = "./data/data.xml";
 
@@ -50,6 +46,9 @@ CascadeClassifier faceCascade;
 CascadeClassifier eyesCascade;
 RNG rng(12345);
 
+//Function Headers
+void detectAndDisplay(Mat frame, FileStorage& fs);
+
 /*Function main */
 int main() {
 
@@ -63,12 +62,12 @@ int main() {
 		return -1;
 	};
 
-//Read the video stream
+/*Read the video stream*/
 //capture = cvCaptureFromCAM(-1);
-
 	capture = cvCaptureFromFile(video);
 	if (capture) {
 		framesNr = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+		//Save frame data in xml file storage
 		FileStorage fs(filename, FileStorage::WRITE);
 		if (!fs.isOpened()) {
 			cout << "Unable to open file storage!" << endl;
@@ -82,7 +81,6 @@ int main() {
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
 
-					//Save frame data in xml file
 					fs << "{" << "Frame" << "{";
 					detectAndDisplay(frame, fs);
 					fs << "}" << "}";
@@ -128,7 +126,6 @@ int main() {
 /*
  * Function DetectAndDisplay
  */
-
 void detectAndDisplay(Mat frame, FileStorage& fs) {
 	vector<Rect> faces;
 	static CvScalar colors[] =
@@ -152,6 +149,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	fs << "millsecFrame" << millsecFrame;
 	fs << "detectionTime" << detectTime;
 	fs << "BBoxes" << "[";
+
 	int bbId = 0;
 	//Draw the Bounding Box for each detected face
 	for (size_t i = 0; i < faces.size(); i++) {
