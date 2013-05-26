@@ -184,7 +184,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 			circle(frame, eye_center, radius, eyeColor, 1, 8, 0);
 		}
 		bbId = (bbId + 1);
-		//Save data in xml file
+		//Load BBox data in xml file storage
 		fs << "{" << "BBox" << "{";
 		fs << "bboxId" << bbId;
 		fs << "x" << x;
