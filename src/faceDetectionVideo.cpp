@@ -37,11 +37,13 @@ Mat grayFrame;
 Mat frame;
 int nrFrames = 0;
 int posFrame;
+int posFrameBefore;
 int widthFrame;
 int heightFrame;
 int x, y, h, w;
 int width, height;
 int msecFrame;
+int msecFrameBefore;
 double detectTime;
 bool paused = false;
 
@@ -86,9 +88,9 @@ int main() {
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
 
-					fs << "{" << "Frame" << "{";
+					//fs << "{" << "Frame" << "{";
 					detectAndDisplay(frame, fs);
-				    fs << "}" << "}";
+				    //fs << "}" << "}";
 
 					//Get frame properties
 					widthFrame = cvGetCaptureProperty(capture,       //Dimension of the individual frames of the video to be read o captured.
@@ -96,13 +98,13 @@ int main() {
 					heightFrame = cvGetCaptureProperty(capture,      //Dimension of the individual frames of the video to be read o captured.
 							CV_CAP_PROP_FRAME_HEIGHT);
 
-				//	posFrame = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
-				//			CV_CAP_PROP_POS_FRAMES));
-					msecFrame = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
+					posFrameBefore = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
+							CV_CAP_PROP_POS_FRAMES));
+					msecFrameBefore = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
 							CV_CAP_PROP_POS_MSEC);
 					printf(
-							"widthFrame: %d heightFrame: %d nrFrames: %d posFrame: %d msecFrame: %d ms\n",
-							widthFrame, heightFrame, nrFrames, posFrame, msecFrame);
+							"widthFrame: %d heightFrame: %d nrFrames: %d posFrameBefore: %d msecFrameBefore: %d ms\n",
+							widthFrame, heightFrame, nrFrames, posFrameBefore, msecFrameBefore);
 				} else {
 					printf(" No captured frame!");
 					break;
@@ -162,6 +164,14 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	detectTime = (int)(t / ((double) cvGetTickFrequency() * 1000.));
 	printf("detection time = %g ms\n", detectTime);
 
+	fs << "{" << "Frame" << "{";
+
+	posFrame = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
+			CV_CAP_PROP_POS_FRAMES));
+	msecFrame = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
+			CV_CAP_PROP_POS_MSEC);
+	printf( "posFrame: %d msecFrame: %d ms\n",
+			posFrame, msecFrame);
 
 	fs << "frameId" << posFrame;
 	fs << "msecFrame" << msecFrame;
@@ -219,6 +229,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	}
 
 	fs << "]";
+	fs << "}" << "}";
 
 }
 
