@@ -137,7 +137,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 			{ { { 0, 0, 255 } }, { { 0, 128, 255 } }, { { 0, 255, 255 } }, { {
 					0, 255, 0 } }, { { 255, 128, 0 } }, { { 255, 255, 0 } }, { {
 					255, 0, 0 } }, { { 255, 0, 255 } }, { { 255, 255, 255 } } };
-
+/*
 	//If the input image is not gray scale, then convert the BGR or BGRA color image to gray scale.
 	if (frame.channels() == 3) {
 		cvtColor(frame, grayFrame, CV_BGR2GRAY);
@@ -147,7 +147,8 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		//Access the input image directly, since it is already gray scale.
 		grayFrame = frame;
 	}
-
+*/
+	cvtColor(frame, grayFrame, CV_BGR2GRAY );
 	resize(grayFrame, grayFrame, grayFrame.size(), 0, 0, INTER_LINEAR);
 
 	//Standardize the brightness and contrast to improve dark images.
@@ -156,9 +157,8 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	//Compute the detection time
 	double t = (double) cvGetTickCount();
 	//Detects objects of different sizes in the gray scale image. Then, the detected objects are returned as a list of rectangles.
-	faceCascade.detectMultiScale(grayFrame, faces, 1.2, 4,
-			0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT,
-			Size(10, 60));
+	faceCascade.detectMultiScale(grayFrame, faces, 1.2, 3,
+			0 | CV_HAAR_SCALE_IMAGE, Size(10, 60));
 	t = (double) cvGetTickCount() - t;
 	detectTime = (int)(t / ((double) cvGetTickFrequency() * 1000.));
 	printf("detection time = %g ms\n", detectTime);
@@ -181,14 +181,11 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		Mat faceROI = grayFrame(faces[i]);
 		vector<Rect> eyes;
 		Scalar eyeColor = CV_RGB(255,255,255);
-
 		x = faces[i].x;
 		y = faces[i].y;
 		w = x + faces[i].width;
 		h = y + faces[i].height;
-
 		rectangle(frame, Point(x, y), Point(w, h), colors[i % 8], 2, 8, 0);
-
 		//Width and height of the BBox
 		width = faces[i].width;
 		height = faces[i].height;
