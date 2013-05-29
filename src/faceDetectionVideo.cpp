@@ -73,7 +73,6 @@ int main() {
 	capture = cvCaptureFromFile(video);
 	if (capture) {
 		nrFrames = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
-
 		//Save frame data in xml file storage
 		FileStorage fs(filename, FileStorage::WRITE);
 		if (!fs.isOpened()) {
@@ -88,9 +87,9 @@ int main() {
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
 
-					//fs << "{" << "Frame" << "{";
+					fs << "{" << "Frame" << "{";
 					detectAndDisplay(frame, fs);
-				    //fs << "}" << "}";
+				    fs << "}" << "}";
 
 					//Get frame properties
 					widthFrame = cvGetCaptureProperty(capture,       //Dimension of the individual frames of the video to be read o captured.
@@ -164,8 +163,6 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	detectTime = (int)(t / ((double) cvGetTickFrequency() * 1000.));
 	printf("detection time = %g ms\n", detectTime);
 
-	fs << "{" << "Frame" << "{";
-
 	posFrame = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
 			CV_CAP_PROP_POS_FRAMES));
 	msecFrame = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
@@ -229,7 +226,6 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	}
 
 	fs << "]";
-	fs << "}" << "}";
 
 }
 
