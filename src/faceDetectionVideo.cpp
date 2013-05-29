@@ -27,26 +27,27 @@ using namespace cv;
 //Cascade Classifier file, used for face detection
 const char* faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
 const char* eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
-
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
 const char* filename = "./data/data.xml";
-const char* windowName  = "Face Detection"; //Name shown in the GUI window
+//const char* filename = "./data/data1.xml";
+const char* windowName = "Face Detection"; //Name shown in the GUI window
 
 CvCapture* capture = 0;
 Mat grayFrame;
 Mat frame;
-bool paused = false;
-double millsecFrame = 0;
-double detectTime = 0;
-int framesNr = 0;
-int posFrame = 0;
+int nrFrames = 0;
+int posFrame;
 int widthFrame;
 int heightFrame;
 int x, y, h, w;
 int width, height;
+int msecFrame;
+double detectTime;
+bool paused = false;
 
 CascadeClassifier faceCascade;
 CascadeClassifier eyesCascade;
+
 RNG rng(12345);
 
 //Function Headers
@@ -69,13 +70,14 @@ int main() {
 //capture = cvCaptureFromCAM(-1);
 	capture = cvCaptureFromFile(video);
 	if (capture) {
-		framesNr = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+		nrFrames = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+
 		//Save frame data in xml file storage
 		FileStorage fs(filename, FileStorage::WRITE);
 		if (!fs.isOpened()) {
 			cout << "Unable to open file storage!" << endl;
 		}
-		fs << "framesNr" << framesNr;
+		fs << "nrFrames" << nrFrames;
 		fs << "Frames" << "[";
 
 		for (;;) {
@@ -86,22 +88,21 @@ int main() {
 
 					fs << "{" << "Frame" << "{";
 					detectAndDisplay(frame, fs);
-					fs << "}" << "}";
+				    fs << "}" << "}";
 
 					//Get frame properties
-					widthFrame = cvGetCaptureProperty(capture,
+					widthFrame = cvGetCaptureProperty(capture,       //Dimension of the individual frames of the video to be read o captured.
 							CV_CAP_PROP_FRAME_WIDTH);
-					heightFrame = cvGetCaptureProperty(capture,
+					heightFrame = cvGetCaptureProperty(capture,      //Dimension of the individual frames of the video to be read o captured.
 							CV_CAP_PROP_FRAME_HEIGHT);
 
-					posFrame = ((int) cvGetCaptureProperty(capture,
-							CV_CAP_PROP_POS_FRAMES));
-					millsecFrame = cvGetCaptureProperty(capture,
+				//	posFrame = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
+				//			CV_CAP_PROP_POS_FRAMES));
+					msecFrame = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
 							CV_CAP_PROP_POS_MSEC);
 					printf(
-							"widthFrame: %d heightFrame: %d framesNr: %d posFrame: %d millsecFrame: %g ms\n",
-							widthFrame, heightFrame, framesNr, posFrame,
-							millsecFrame);
+							"widthFrame: %d heightFrame: %d nrFrames: %d posFrame: %d msecFrame: %d ms\n",
+							widthFrame, heightFrame, nrFrames, posFrame, msecFrame);
 				} else {
 					printf(" No captured frame!");
 					break;
@@ -135,21 +136,35 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 			{ { { 0, 0, 255 } }, { { 0, 128, 255 } }, { { 0, 255, 255 } }, { {
 					0, 255, 0 } }, { { 255, 128, 0 } }, { { 255, 255, 0 } }, { {
 					255, 0, 0 } }, { { 255, 0, 255 } }, { { 255, 255, 255 } } };
-	cvtColor(frame, grayFrame, CV_BGR2GRAY);
+
+	//If the input image is not gray scale, then convert the BGR or BGRA color image to gray scale.
+	if (frame.channels() == 3) {
+		cvtColor(frame, grayFrame, CV_BGR2GRAY);
+	} else if (frame.channels() == 4) {
+		cvtColor(frame, grayFrame, CV_BGRA2GRAY);
+	} else {
+		//Access the input image directly, since it is already gray scale.
+		grayFrame = frame;
+	}
+
 	resize(grayFrame, grayFrame, grayFrame.size(), 0, 0, INTER_LINEAR);
+
+	//Standardize the brightness and contrast to improve dark images.
 	equalizeHist(grayFrame, grayFrame);
 
 	//Compute the detection time
 	double t = (double) cvGetTickCount();
-	//Detects objects of different sizes in the input image. The detected objects are returned as a list of rectangles.
-	faceCascade.detectMultiScale(grayFrame, faces, 1.2, 3,
-			0 | CV_HAAR_SCALE_IMAGE, Size(10, 60));
+	//Detects objects of different sizes in the gray scale image. Then, the detected objects are returned as a list of rectangles.
+	faceCascade.detectMultiScale(grayFrame, faces, 1.2, 4,
+			0 | CV_HAAR_SCALE_IMAGE | CV_HAAR_FIND_BIGGEST_OBJECT,
+			Size(10, 60));
 	t = (double) cvGetTickCount() - t;
-	detectTime = (t / ((double) cvGetTickFrequency() * 1000.));
+	detectTime = (int)(t / ((double) cvGetTickFrequency() * 1000.));
 	printf("detection time = %g ms\n", detectTime);
 
+
 	fs << "frameId" << posFrame;
-	fs << "millsecFrame" << millsecFrame;
+	fs << "msecFrame" << msecFrame;
 	fs << "detectionTime" << detectTime;
 	fs << "BBoxes" << "[";
 
@@ -166,6 +181,8 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		h = y + faces[i].height;
 
 		rectangle(frame, Point(x, y), Point(w, h), colors[i % 8], 2, 8, 0);
+
+		//Width and height of the BBox
 		width = faces[i].width;
 		height = faces[i].height;
 
@@ -186,6 +203,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 			int radius = cvRound((eyes[j].width + eyes[j].height) * 0.25);
 			circle(frame, eye_center, radius, eyeColor, 1, 8, 0);
 		}
+
 		bbId = (bbId + 1);
 		//Load BBox data in xml file storage
 		fs << "{" << "BBox" << "{";
@@ -199,7 +217,8 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		//Show what you got
 		imshow(windowName, frame);
 	}
-	fs << "]";
-}
 
+	fs << "]";
+
+}
 
