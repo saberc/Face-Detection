@@ -28,22 +28,24 @@ using namespace cv;
 const char* faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
 const char* eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
+const char* output = "/Users/sabriecca/Documents/Video/REC1/Out/out.mov";
 const char* filename = "./data/data.xml";
 //const char* filename = "./data/data1.xml";
 const char* windowName = "Face Detection"; //Name shown in the GUI window
 
-CvCapture* capture = 0;
+CvCapture* capture = NULL;
 Mat grayFrame;
 Mat frame;
 int nrFrames = 0;
 int posFrame;
 int posFrameBefore;
+int msecFrame;
+int msecFrameBefore;
 int widthFrame;
 int heightFrame;
 int x, y, h, w;
 int width, height;
-int msecFrame;
-int msecFrameBefore;
+
 double detectTime;
 bool paused = false;
 
@@ -76,7 +78,7 @@ int main() {
 		//Save frame data in xml file storage
 		FileStorage fs(filename, FileStorage::WRITE);
 		if (!fs.isOpened()) {
-			cout << "Unable to open file storage!" << endl;
+			cout << "Input video could not be opened !!" << endl;
 		}
 		fs << "nrFrames" << nrFrames;
 		fs << "Frames" << "[";
@@ -87,14 +89,14 @@ int main() {
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
 
-					fs << "{" << "Frame" << "{";
+					//fs << "{" << "Frame" << "{";
 					detectAndDisplay(frame, fs);
-				    fs << "}" << "}";
+				    //fs << "}" << "}";
 
 					//Get frame properties
-					widthFrame = cvGetCaptureProperty(capture,       //Dimension of the individual frames of the video to be read o captured.
+					widthFrame = cvGetCaptureProperty(capture,               //Dimension of the individual frames of the video to be read o captured.
 							CV_CAP_PROP_FRAME_WIDTH);
-					heightFrame = cvGetCaptureProperty(capture,      //Dimension of the individual frames of the video to be read o captured.
+					heightFrame = cvGetCaptureProperty(capture,              //Dimension of the individual frames of the video to be read o captured.
 							CV_CAP_PROP_FRAME_HEIGHT);
 
 					posFrameBefore = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
@@ -122,7 +124,8 @@ int main() {
 			}
 		}
 		fs << "]";
-		fs.release();
+
+	fs.release();
 
 		return 0;
 	}
@@ -137,7 +140,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 			{ { { 0, 0, 255 } }, { { 0, 128, 255 } }, { { 0, 255, 255 } }, { {
 					0, 255, 0 } }, { { 255, 128, 0 } }, { { 255, 255, 0 } }, { {
 					255, 0, 0 } }, { { 255, 0, 255 } }, { { 255, 255, 255 } } };
-/*
+
 	//If the input image is not gray scale, then convert the BGR or BGRA color image to gray scale.
 	if (frame.channels() == 3) {
 		cvtColor(frame, grayFrame, CV_BGR2GRAY);
@@ -147,8 +150,8 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		//Access the input image directly, since it is already gray scale.
 		grayFrame = frame;
 	}
-*/
-	cvtColor(frame, grayFrame, CV_BGR2GRAY );
+
+	//cvtColor(frame, grayFrame, CV_BGR2GRAY );
 	resize(grayFrame, grayFrame, grayFrame.size(), 0, 0, INTER_LINEAR);
 
 	//Standardize the brightness and contrast to improve dark images.
@@ -170,7 +173,8 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	printf( "posFrame: %d msecFrame: %d ms\n",
 			posFrame, msecFrame);
 
-	fs << "frameId" << posFrame;
+	fs << "{" << "Frame" << "{";
+	fs << "frameId" << posFrame-1;
 	fs << "msecFrame" << msecFrame;
 	fs << "detectionTime" << detectTime;
 	fs << "BBoxes" << "[";
@@ -198,6 +202,10 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		putText(frame, boxText, Point(x, y), FONT_HERSHEY_PLAIN, 1.0,
 				CV_RGB(0,255,0), 2.0);
 
+		string boxText1 = format("posFrame= %d msecFrame= %d ms", posFrame, msecFrame);
+		putText(frame, boxText1, Point(x + height, y + width ), FONT_HERSHEY_PLAIN, 1.0,
+						CV_RGB(0,255,0), 2.0);
+
 		//For each face, detect eyes
 		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1,
 				1 | CV_HAAR_SCALE_IMAGE, Size(20, 20));
@@ -217,12 +225,12 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		fs << "w" << width;
 		fs << "h" << height;
 		fs << "}" << "}";
-
+		}
 		//Show what you got
 		imshow(windowName, frame);
-	}
 
 	fs << "]";
+	fs << "}" << "}";
 
 }
 
