@@ -28,7 +28,10 @@ using namespace cv;
 const char* faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
 const char* eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
 const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
-const char* output = "/Users/sabriecca/Documents/Video/REC1/Out/out.mov";
+const char* output = "/Users/sabriecca/Documents/Video/REC1/Out/Output.avi"
+		""
+		""
+		"";
 const char* filename = "./data/data.xml";
 //const char* filename = "./data/data1.xml";
 const char* windowName = "Face Detection"; //Name shown in the GUI window
@@ -36,6 +39,7 @@ const char* windowName = "Face Detection"; //Name shown in the GUI window
 CvCapture* capture = NULL;
 Mat grayFrame;
 Mat frame;
+IplImage* result;
 int nrFrames = 0;
 int posFrame;
 int posFrameBefore;
@@ -45,7 +49,7 @@ int widthFrame;
 int heightFrame;
 int x, y, h, w;
 int width, height;
-
+double fps;
 double detectTime;
 bool paused = false;
 
@@ -60,7 +64,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs);
 /*Function main */
 int main() {
 
-	//Load the cascades
+//Load the cascades
 	if (!faceCascade.load(faceCascadeName)) {
 		printf("Error loading\n");
 		return -1;
@@ -70,11 +74,17 @@ int main() {
 		return -1;
 	};
 
-/*Read the video stream*/
-//capture = cvCaptureFromCAM(-1);
+	/*Read the video stream*/
+	//capture = cvCaptureFromCAM(-1);
 	capture = cvCaptureFromFile(video);
 	if (capture) {
+		//Get frame properties
 		nrFrames = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
+		widthFrame = cvGetCaptureProperty(capture, //Dimension of the individual frames of the video to be read o captured.
+				CV_CAP_PROP_FRAME_WIDTH);
+		heightFrame = cvGetCaptureProperty(capture, //Dimension of the individual frames of the video to be read o captured.
+				CV_CAP_PROP_FRAME_HEIGHT);
+		fps = cvGetCaptureProperty(capture,CV_CAP_PROP_FPS); //Frame rate
 		//Save frame data in xml file storage
 		FileStorage fs(filename, FileStorage::WRITE);
 		if (!fs.isOpened()) {
@@ -83,34 +93,39 @@ int main() {
 		fs << "nrFrames" << nrFrames;
 		fs << "Frames" << "[";
 
+		VideoWriter writer (output,
+		#ifdef PROBLEM
+		            CV_FOURCC('I','4','2','0') ,
+		#else
+		            CV_FOURCC('M','J','P','G') ,
+		#endif
+		            fps,
+		            Size(widthFrame, heightFrame),
+		            1);
 		for (;;) {
 			if (!paused) {
 				frame = cvQueryFrame(capture);
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
-
-					//fs << "{" << "Frame" << "{";
 					detectAndDisplay(frame, fs);
-				    //fs << "}" << "}";
-
 					//Get frame properties
-					widthFrame = cvGetCaptureProperty(capture,               //Dimension of the individual frames of the video to be read o captured.
-							CV_CAP_PROP_FRAME_WIDTH);
-					heightFrame = cvGetCaptureProperty(capture,              //Dimension of the individual frames of the video to be read o captured.
-							CV_CAP_PROP_FRAME_HEIGHT);
-
-					posFrameBefore = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
+					posFrameBefore = ((int) cvGetCaptureProperty(capture, //POS_FRAME is the current position in frame number. It retrieves the current frame number.
 							CV_CAP_PROP_POS_FRAMES));
-					msecFrameBefore = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
+					msecFrameBefore = (int) cvGetCaptureProperty(capture, //POS_MSEC is the current position in a video file, measured in milliseconds.
 							CV_CAP_PROP_POS_MSEC);
 					printf(
-							"widthFrame: %d heightFrame: %d nrFrames: %d posFrameBefore: %d msecFrameBefore: %d ms\n",
-							widthFrame, heightFrame, nrFrames, posFrameBefore, msecFrameBefore);
+							"widthFrame: %d heightFrame: %d nrFrames: %d posFrameBefore: %d msecFrameBefore: %d ms fps: %g\n",
+							widthFrame, heightFrame, nrFrames, posFrameBefore,
+							msecFrameBefore, fps);
+
+					writer << frame;
+
 				} else {
 					printf(" No captured frame!");
 					break;
 				}
 			}
+
 			//Get pause or stop the video stream
 			char c = (char) waitKey(10);
 			if (c == 'c') {
@@ -124,13 +139,10 @@ int main() {
 			}
 		}
 		fs << "]";
-
-	fs.release();
-
+		fs.release();
 		return 0;
 	}
 }
-
 /*
  * Function DetectAndDisplay
  */
@@ -163,18 +175,18 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	faceCascade.detectMultiScale(grayFrame, faces, 1.2, 3,
 			0 | CV_HAAR_SCALE_IMAGE, Size(10, 60));
 	t = (double) cvGetTickCount() - t;
-	detectTime = (int)(t / ((double) cvGetTickFrequency() * 1000.));
+	detectTime = (int) (t / ((double) cvGetTickFrequency() * 1000.));
 	printf("detection time = %g ms\n", detectTime);
-
-	posFrame = ((int) cvGetCaptureProperty(capture,   //POS_FRAME is the current position in frame number. It retrieves the current frame number.
+	//Get frame properties
+	posFrame = ((int) cvGetCaptureProperty(capture, //POS_FRAME is the current position in frame number. It retrieves the current frame number.
 			CV_CAP_PROP_POS_FRAMES));
-	msecFrame = (int) cvGetCaptureProperty(capture,   //POS_MSEC is the current position in a video file, measured in milliseconds.
+	msecFrame = (int) cvGetCaptureProperty(capture, //POS_MSEC is the current position in a video file, measured in milliseconds.
 			CV_CAP_PROP_POS_MSEC);
-	printf( "posFrame: %d msecFrame: %d ms\n",
-			posFrame, msecFrame);
+	printf("posFrame: %d msecFrame: %d ms\n", posFrame, msecFrame);
+
 
 	fs << "{" << "Frame" << "{";
-	fs << "frameId" << posFrame-1;
+	fs << "frameId" << posFrame - 1;
 	fs << "msecFrame" << msecFrame;
 	fs << "detectionTime" << detectTime;
 	fs << "BBoxes" << "[";
@@ -202,9 +214,10 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		putText(frame, boxText, Point(x, y), FONT_HERSHEY_PLAIN, 1.0,
 				CV_RGB(0,255,0), 2.0);
 
-		string boxText1 = format("posFrame= %d msecFrame= %d ms", posFrame, msecFrame);
-		putText(frame, boxText1, Point(x + height, y + width ), FONT_HERSHEY_PLAIN, 1.0,
-						CV_RGB(0,255,0), 2.0);
+		string boxText1 = format("posFrame= %d msecFrame= %d ms", posFrame,
+				msecFrame);
+		putText(frame, boxText1, Point(x + height, y + width),
+				FONT_HERSHEY_PLAIN, 1.0, CV_RGB(0,255,0), 2.0);
 
 		//For each face, detect eyes
 		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1,
@@ -225,9 +238,10 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		fs << "w" << width;
 		fs << "h" << height;
 		fs << "}" << "}";
-		}
-		//Show what you got
-		imshow(windowName, frame);
+	}
+
+	//Show what you got
+	imshow(windowName, frame);
 
 	fs << "]";
 	fs << "}" << "}";
