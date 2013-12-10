@@ -1,9 +1,10 @@
 //============================================================================
 // Name        : FaceDetectionVideo.cpp
+
 // Author      : Sabrina Ecca
 // Version     :
 // Copyright   : Your copyright notice
-// Description : C++, OpenCV 2.4.2
+// Description : C++, OpenCV 2.4.3
 //============================================================================
 
 #include "opencv2/core/core.hpp"
@@ -11,35 +12,27 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-
+#include "DataSharing.h"
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
 #include <sstream>
 #include <time.h>
 #include <string>
-
 using namespace std;
 using namespace cv;
 
-// Global variables
-
+//Global variables
 //Cascade Classifier file, used for face detection
-const char* faceCascadeName = "./haarcascades/haarcascade_frontalface_alt.xml";
-const char* eyesCascadeName = "./haarcascades/haarcascade_eye_tree_eyeglasses.xml";
-const char* video = "/Users/sabriecca/Documents/Video/REC1/videodemo.mov";
-const char* output = "/Users/sabriecca/Documents/Video/REC1/Out/Output.avi"
-		""
-		""
-		"";
-const char* filename = "./data/data.xml";
-//const char* filename = "./data/data1.xml";
-const char* windowName = "Face Detection"; //Name shown in the GUI window
+const char* faceCascadeName = "./Parameters/haar/haarcascade_frontalface_alt.xml";
+const char* eyesCascadeName = "./Parameters/haar/haarcascade_eye_tree_eyeglasses.xml";
 
+const char* windowName = "Face Detection";     //Name shown in the GUI window
 CvCapture* capture = NULL;
 Mat grayFrame;
 Mat frame;
 IplImage* result;
+clock_t start,end;
 int nrFrames = 0;
 int posFrame;
 int posFrameBefore;
@@ -49,22 +42,48 @@ int widthFrame;
 int heightFrame;
 int x, y, h, w;
 int width, height;
+int bbNr = 0;
 double fps;
 double detectTime;
 bool paused = false;
+string video;
+string output;
+string filename;
+string filename1;
 
 CascadeClassifier faceCascade;
 CascadeClassifier eyesCascade;
 
 RNG rng(12345);
 
-//Function Headers
-void detectAndDisplay(Mat frame, FileStorage& fs);
+/*Function Headers*/
+void detectAndDisplay(Mat frame, FileStorage& fs, int bbNr);
 
 /*Function main */
-int main() {
+int main(int argc,  char **argv){
+	//Variables to compute the detection time
+	int time;
+	start=clock();
 
-//Load the cascades
+   //Call Socket
+   bool connectionToSocket = false;
+   DataSharing socket;
+	if (socket.connectToSoket("127.0.0.1")){
+		connectionToSocket = true;
+		cout << endl << "connectedDetection";
+	}
+	else cout << endl << "notConnectedDetection";
+	if (argc > 1)
+	 { cout << endl << argv[0]<< endl;
+
+	    video =  "./" + (string) argv[1];
+	    filename = "./Data/" + (string) argv[1] +".xml";
+	    filename1 = "./Data/" + (string) argv[1] +".yml";
+	    output =   "./VideoOut/" + (string) argv[1];
+	    cout << endl << video << endl<< filename << endl << output;
+	    };
+
+   //Load the cascades
 	if (!faceCascade.load(faceCascadeName)) {
 		printf("Error loading\n");
 		return -1;
@@ -75,39 +94,52 @@ int main() {
 	};
 
 	/*Read the video stream*/
-	//capture = cvCaptureFromCAM(-1);
-	capture = cvCaptureFromFile(video);
+	capture = cvCaptureFromFile(video.c_str());
 	if (capture) {
 		//Get frame properties
 		nrFrames = (int) cvGetCaptureProperty(capture, CV_CAP_PROP_FRAME_COUNT);
-		widthFrame = cvGetCaptureProperty(capture, //Dimension of the individual frames of the video to be read o captured.
+		widthFrame = cvGetCaptureProperty(capture,             //Dimension of the individual frames of the video to be read o captured.
 				CV_CAP_PROP_FRAME_WIDTH);
-		heightFrame = cvGetCaptureProperty(capture, //Dimension of the individual frames of the video to be read o captured.
+		heightFrame = cvGetCaptureProperty(capture,            //Dimension of the individual frames of the video to be read o captured.
 				CV_CAP_PROP_FRAME_HEIGHT);
-		fps = cvGetCaptureProperty(capture,CV_CAP_PROP_FPS); //Frame rate
+		fps = cvGetCaptureProperty(capture, CV_CAP_PROP_FPS);  //Frame rate
+
 		//Save frame data in xml file storage
 		FileStorage fs(filename, FileStorage::WRITE);
+
+		//Save frame data in yml file storage
+		FileStorage fs1(filename1, FileStorage::WRITE);
+
 		if (!fs.isOpened()) {
+			cout << "Input video could not be opened !!" << endl;
+		}
+		if (!fs1.isOpened()) {
 			cout << "Input video could not be opened !!" << endl;
 		}
 		fs << "nrFrames" << nrFrames;
 		fs << "Frames" << "[";
 
-		VideoWriter writer (output,
+		VideoWriter writer(output,
 		#ifdef PROBLEM
-		            CV_FOURCC('I','4','2','0') ,
+				CV_FOURCC('I','4','2','0') ,
 		#else
-		            CV_FOURCC('M','J','P','G') ,
+				CV_FOURCC('M', 'J', 'P', 'G'),
 		#endif
-		            fps,
-		            Size(widthFrame, heightFrame),
-		            1);
+				fps, Size(widthFrame, heightFrame), 1);
+
 		for (;;) {
+
 			if (!paused) {
 				frame = cvQueryFrame(capture);
 				//Apply the classifier to the frame
 				if (!frame.empty()) {
-					detectAndDisplay(frame, fs);
+					detectAndDisplay(frame, fs, bbNr);
+					bbNr++;
+					printf("%d Detected Faces Nr.\n", bbNr);
+
+					if(connectionToSocket)
+						socket.writeToSoket(((float) (posFrame + 1)/nrFrames)*100);
+
 					//Get frame properties
 					posFrameBefore = ((int) cvGetCaptureProperty(capture, //POS_FRAME is the current position in frame number. It retrieves the current frame number.
 							CV_CAP_PROP_POS_FRAMES));
@@ -122,6 +154,7 @@ int main() {
 
 				} else {
 					printf(" No captured frame!");
+
 					break;
 				}
 			}
@@ -138,15 +171,30 @@ int main() {
 				}
 			}
 		}
+
+		double t1 = (double) cvGetTickCount() - t1;
+		double detectTime1 = (int) (t1 / ((double) cvGetTickFrequency() * 1000.));
+
+		end = clock();
+		time = ((int)(end-start))/CLOCKS_PER_SEC ;
+
+		fs1 << "Frames Nr" << nrFrames;
+		fs1 << "Detected Faces Nr" << bbNr;
+		fs1 << "detectionTime" << detectTime1;
+		fs1 << "detectionTime1" << time;
+
 		fs << "]";
 		fs.release();
+		fs1.release();
+		if(connectionToSocket)
+		socket.release();
 		return 0;
 	}
 }
 /*
  * Function DetectAndDisplay
  */
-void detectAndDisplay(Mat frame, FileStorage& fs) {
+void detectAndDisplay(Mat frame, FileStorage& fs, int bbNr) {
 	vector<Rect> faces;
 	static CvScalar colors[] =
 			{ { { 0, 0, 255 } }, { { 0, 128, 255 } }, { { 0, 255, 255 } }, { {
@@ -184,7 +232,6 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 			CV_CAP_PROP_POS_MSEC);
 	printf("posFrame: %d msecFrame: %d ms\n", posFrame, msecFrame);
 
-
 	fs << "{" << "Frame" << "{";
 	fs << "frameId" << posFrame - 1;
 	fs << "msecFrame" << msecFrame;
@@ -192,8 +239,10 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 	fs << "BBoxes" << "[";
 
 	int bbId = 0;
+
 	//Draw the Bounding Box for each detected face
 	for (size_t i = 0; i < faces.size(); i++) {
+
 		Mat faceROI = grayFrame(faces[i]);
 		vector<Rect> eyes;
 		Scalar eyeColor = CV_RGB(255,255,255);
@@ -201,11 +250,12 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		y = faces[i].y;
 		w = x + faces[i].width;
 		h = y + faces[i].height;
+
 		rectangle(frame, Point(x, y), Point(w, h), colors[i % 8], 2, 8, 0);
+
 		//Width and height of the BBox
 		width = faces[i].width;
 		height = faces[i].height;
-
 		printf("x= %d " "y= %d " "w= %d " "h= %d\n ", x, y, width, height);
 		//Create the text we will annotate the bounding box coordinates
 		string boxText = format("x= %d " "y= %d " "w= %d " "h= %d ", x, y,
@@ -222,6 +272,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		//For each face, detect eyes
 		eyesCascade.detectMultiScale(faceROI, eyes, 1.2, 1,
 				1 | CV_HAAR_SCALE_IMAGE, Size(20, 20));
+
 		for (size_t j = 0; j < eyes.size(); j++) {
 			Point eye_center(faces[i].x + eyes[j].x + eyes[j].width / 2,
 					faces[i].y + eyes[j].y + eyes[j].height / 2);
@@ -238,7 +289,7 @@ void detectAndDisplay(Mat frame, FileStorage& fs) {
 		fs << "w" << width;
 		fs << "h" << height;
 		fs << "}" << "}";
-	}
+		}
 
 	//Show what you got
 	imshow(windowName, frame);
