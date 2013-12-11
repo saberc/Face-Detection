@@ -2,8 +2,6 @@
 // Name        : FaceDetectionVideo.cpp
 
 // Author      : Sabrina Ecca
-// Version     :
-// Copyright   : Your copyright notice
 // Description : C++, OpenCV 2.4.3
 //============================================================================
 
